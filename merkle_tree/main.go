@@ -1,17 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"os"
 )
 
-
-
 type MerkleNode struct {
-	Left *MerkleNode
+	Left  *MerkleNode
 	Right *MerkleNode
-	Hash []byte
+	Hash  []byte
 }
 
 type MerkleTree struct {
@@ -41,7 +40,7 @@ func buildMerkleTree(data [][]byte) *MerkleTree {
 	for len(nodes) > 1 {
 		var newNodes []*MerkleNode
 		for i := 1; i < len(nodes); i += 2 {
-			
+
 			newNode := NewMerkleNode(nodes[i], nodes[i-1], nil)
 			newNodes = append(newNodes, newNode)
 		}
@@ -54,13 +53,36 @@ func buildMerkleTree(data [][]byte) *MerkleTree {
 	return &MerkleTree{Root: nodes[0]}
 }
 
+func hashFiles(files []string) ([][]byte, error) {
+	var data [][]byte
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+		hashedContent := hashData(content)
+		fmt.Printf("Hashed content for %s: %s\n", file, hex.EncodeToString(hashedContent))
+		data = append(data, hashedContent)
+	}
+	return data, nil
+}
 
 func main() {
-	data := [][]byte{
-		[]byte("node1"),
-		[]byte("node2"),
-		[]byte("node3"),
-		[]byte("node4"),
+
+	args := os.Args[1:]
+
+	var data [][]byte
+	var err error
+	if len(args) > 0 {
+		data, err = hashFiles(args)
+		if err != nil {
+			fmt.Println("Error hashing files:", err)
+			return
+		}
+
+	} else {
+		fmt.Println("No files provided")
+		return
 	}
 
 	tree := buildMerkleTree(data)
