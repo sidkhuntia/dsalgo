@@ -64,19 +64,15 @@ func buildMerkleTree(data [][]byte) *MerkleTree {
 
 func hashFiles(files []string) ([][]byte, error) {
 
-	workers := runtime.NumCPU()
-
-	if len(files) < workers {
-		workers = len(files)
-	}
+	workers := min(len(files), runtime.NumCPU())
 
 	jobs := make(chan string, len(files))
 	results := make(chan []byte, len(files))
 
 	wg := sync.WaitGroup{}
+	wg.Add(workers)
 
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
+	for range workers {
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
