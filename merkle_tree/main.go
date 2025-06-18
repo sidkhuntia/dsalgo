@@ -145,14 +145,23 @@ func hashFiles(files []string) ([][]byte, error) {
 
 	fmt.Printf("Hashing %d files\n", len(files))
 
+	for _, file := range files {
+		fmt.Printf("Hashing file: %s\n", file)
+	}
+
 	return hashFilesWithTimeout(files, 30*time.Second) // 30 second default timeout
+}
+
+type HashResult struct {
+	File string
+	Hash []byte
 }
 
 func hashFilesWithTimeout(files []string, timeout time.Duration) ([][]byte, error) {
 	workers := min(len(files), runtime.NumCPU())
 
 	jobs := make(chan string, len(files))
-	results := make(chan []byte, len(files))
+	results := make(chan HashResult, len(files))
 	errors := make(chan error, len(files))
 
 	// Create context with timeout
@@ -177,7 +186,7 @@ func hashFilesWithTimeout(files []string, timeout time.Duration) ([][]byte, erro
 						cancel()
 						return
 					}
-					results <- hash
+					results <- HashResult{File: job, Hash: hash}
 				case <-ctx.Done():
 					return // Context cancelled, stop worker
 				}
@@ -202,6 +211,7 @@ func hashFilesWithTimeout(files []string, timeout time.Duration) ([][]byte, erro
 		close(errors)
 	}()
 
+	var hashedFiles []HashResult
 	var data [][]byte
 	expectedResults := len(files)
 	receivedResults := 0
@@ -214,9 +224,9 @@ func hashFilesWithTimeout(files []string, timeout time.Duration) ([][]byte, erro
 				if receivedResults < expectedResults {
 					return nil, fmt.Errorf("not all files processed successfully")
 				}
-				return data, nil
+				break
 			}
-			data = append(data, result)
+			hashedFiles = append(hashedFiles, result)
 			receivedResults++
 		case err := <-errors:
 			cancel()
@@ -224,6 +234,14 @@ func hashFilesWithTimeout(files []string, timeout time.Duration) ([][]byte, erro
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
+	}
+
+	sort.Slice(hashedFiles, func(i, j int) bool {
+		return hashedFiles[i].File < hashedFiles[j].File
+	})
+
+	for _, file := range hashedFiles {
+		data = append(data, file.Hash)
 	}
 
 	return data, nil
