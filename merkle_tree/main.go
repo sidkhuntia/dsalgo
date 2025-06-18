@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 )
 
 type MerkleNode struct {
@@ -63,25 +65,42 @@ func buildMerkleTree(data [][]byte) *MerkleTree {
 }
 
 func hashFiles(files []string) ([][]byte, error) {
+	return hashFilesWithTimeout(files, 30*time.Second) // 30 second default timeout
+}
 
+func hashFilesWithTimeout(files []string, timeout time.Duration) ([][]byte, error) {
 	workers := min(len(files), runtime.NumCPU())
 
 	jobs := make(chan string, len(files))
 	results := make(chan []byte, len(files))
+	errors := make(chan error, len(files))
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	wg := sync.WaitGroup{}
-	wg.Add(workers)
 
 	for range workers {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for job := range jobs {
-				hash, err := hashFile(job)
-				if err != nil {
-					fmt.Println("Error hashing file:", err)
-					continue
+			for {
+				select {
+				case job, ok := <-jobs:
+					if !ok {
+						return // jobs channel closed
+					}
+					hash, err := hashFile(ctx, job)
+					if err != nil {
+						errors <- err
+						cancel()
+						return
+					}
+					results <- hash
+				case <-ctx.Done():
+					return // Context cancelled, stop worker
 				}
-				results <- hash
 			}
 		}()
 	}
@@ -89,25 +108,56 @@ func hashFiles(files []string) ([][]byte, error) {
 	go func() {
 		defer close(jobs)
 		for _, file := range files {
-
-			jobs <- file
+			select {
+			case <-ctx.Done():
+				return
+			case jobs <- file:
+			}
 		}
 	}()
 
 	go func() {
 		wg.Wait()
 		close(results)
+		close(errors)
 	}()
 
 	var data [][]byte
-	for result := range results {
-		data = append(data, result)
+	expectedResults := len(files)
+	receivedResults := 0
+
+	for receivedResults < expectedResults {
+		select {
+		case result, ok := <-results:
+			if !ok {
+				// if the results channel is closed, check if we got all results
+				if receivedResults < expectedResults {
+					return nil, fmt.Errorf("not all files processed successfully")
+				}
+				return data, nil
+			}
+			data = append(data, result)
+			receivedResults++
+		case err := <-errors:
+			cancel()
+			return nil, err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 
 	return data, nil
 }
 
-func hashFile(file string) ([]byte, error) {
+func hashFile(ctx context.Context, file string) ([]byte, error) {
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		break
+	}
+
 	data, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -125,15 +175,22 @@ func hashFile(file string) ([]byte, error) {
 
 	hash := sha256.New()
 
-	if stat.Size() <= 10*1024*1024 { // if file is less than 10MB, read the whole file
+	if stat.Size() <= 5*1024*1024 { // if file is less than 5MB, read the whole file
 		content, err := os.ReadFile(file)
 		if err != nil {
 			return nil, err
 		}
 		hash.Write(content)
-	} else {
-		buffer := make([]byte, 1024*1024) // if file is greater than 10MB, read the file in chunks of 1MB
+	} else if stat.Size() <= 50*1024*1024 { // if file is less than 50MB, read the file in chunks of 1MB
+		buffer := make([]byte, 1024*1024)
 		for {
+			// Check if context is cancelled before each read
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+
 			n, err := data.Read(buffer)
 			if n > 0 {
 				hash.Write(buffer[:n])
