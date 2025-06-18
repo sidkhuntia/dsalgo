@@ -23,8 +23,19 @@ func hashData(data []byte) []byte {
 }
 
 func NewMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
-	hash := hashData(data)
-	return &MerkleNode{Left: left, Right: right, Hash: hash}
+	hash := sha256.New()
+	if left != nil {
+		hash.Write(left.Hash)
+	}
+	if right != nil {
+		hash.Write(right.Hash)
+	}
+	if data != nil {
+		hash.Write(data)
+	}
+	hashValue := hash.Sum(nil)
+
+	return &MerkleNode{Left: left, Right: right, Hash: hashValue}
 }
 
 func buildMerkleTree(data [][]byte) *MerkleTree {
@@ -61,7 +72,6 @@ func hashFiles(files []string) ([][]byte, error) {
 			return nil, err
 		}
 		hashedContent := hashData(content)
-		fmt.Printf("Hashed content for %s: %s\n", file, hex.EncodeToString(hashedContent))
 		data = append(data, hashedContent)
 	}
 	return data, nil
