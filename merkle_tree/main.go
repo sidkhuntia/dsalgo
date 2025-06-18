@@ -143,12 +143,6 @@ func hashFiles(files []string) ([][]byte, error) {
 	// sort the files
 	sort.Strings(files)
 
-	fmt.Printf("Hashing %d files\n", len(files))
-
-	for _, file := range files {
-		fmt.Printf("Hashing file: %s\n", file)
-	}
-
 	return hashFilesWithTimeout(files, 30*time.Second) // 30 second default timeout
 }
 
