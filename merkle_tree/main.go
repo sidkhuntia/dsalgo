@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -15,13 +17,90 @@ import (
 )
 
 type MerkleNode struct {
-	Left  *MerkleNode
-	Right *MerkleNode
-	Hash  []byte
+	Left  *MerkleNode `json:"left,omitempty"`
+	Right *MerkleNode `json:"right,omitempty"`
+	Hash  []byte      `json:"hash"`
 }
 
 type MerkleTree struct {
-	Root *MerkleNode
+	Root      *MerkleNode `json:"root"`
+	CreatedAt time.Time   `json:"created_at"`
+	FileCount int         `json:"file_count"`
+	RootHash  string      `json:"root_hash"`
+}
+
+func (m *MerkleTree) Print() {
+	fmt.Printf("Merkle Tree Root Hash: %s\n", hex.EncodeToString(m.Root.Hash))
+}
+
+func (m *MerkleTree) ToJSON() ([]byte, error) {
+	if m.Root != nil {
+		m.RootHash = hex.EncodeToString(m.Root.Hash)
+	}
+	return json.MarshalIndent(m, "", "  ")
+}
+
+func (m *MerkleTree) SaveToFile(filename string) error {
+	jsonData, err := m.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize tree: %v", err)
+	}
+
+	return os.WriteFile(filename, jsonData, 0644)
+}
+
+func LoadMerkleTreeFromFile(filename string) (*MerkleTree, error) {
+	jsonData, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+
+	var tree MerkleTree
+	err = json.Unmarshal(jsonData, &tree)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	return &tree, nil
+}
+
+func (m *MerkleTree) isEqual(other *MerkleTree) bool {
+	return m.RootHash == other.RootHash
+}
+
+func compareNodes(a, b *MerkleNode) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Compare hashes
+	if len(a.Hash) != len(b.Hash) {
+		return false
+	}
+	for i, v := range a.Hash {
+		if v != b.Hash[i] {
+			return false
+		}
+	}
+
+	// Recursively compare children
+	return compareNodes(a.Left, b.Left) && compareNodes(a.Right, b.Right)
+}
+
+func (m *MerkleTree) Compare(other *MerkleTree) {
+	fmt.Println("=== Merkle Tree Comparison ===")
+
+	if m.isEqual(other) {
+		fmt.Println("✅ Trees are IDENTICAL")
+		fmt.Printf("Root Hash: %s\n", hex.EncodeToString(m.Root.Hash))
+		return
+	}
+
+	fmt.Println("❌ Trees are DIFFERENT")
+
 }
 
 func NewMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
@@ -67,7 +146,18 @@ func buildMerkleTree(data [][]byte) *MerkleTree {
 		return nil
 	}
 
-	return &MerkleTree{Root: nodes[0]}
+	tree := &MerkleTree{
+		Root:      nodes[0],
+		CreatedAt: time.Now(),
+		FileCount: len(data),
+	}
+
+	// Set the root hash string
+	if tree.Root != nil {
+		tree.RootHash = hex.EncodeToString(tree.Root.Hash)
+	}
+
+	return tree
 }
 
 func getAllFilesInDirectory(directory string) ([]string, error) {
@@ -302,38 +392,107 @@ func hashFile(ctx context.Context, file string) ([]byte, error) {
 }
 
 func main() {
+	// Define flags
+	var (
+		compareJSON = flag.String("compare", "", "Path to JSON file containing previous Merkle tree for comparison")
+		saveJSON    = flag.String("save", "", "Path to save current Merkle tree as JSON")
+		loadJSON    = flag.String("load", "", "Path to load Merkle tree from JSON file")
+		showHelp    = flag.Bool("h", false, "Show help message")
+	)
 
-	args := os.Args[1:]
+	flag.Parse()
 
+	if *showHelp {
+		fmt.Println("Merkle Tree CLI Tool")
+		fmt.Println("Usage:")
+		fmt.Println("  Build from files:     go run main.go [files...]")
+		fmt.Println("  Build from directory: go run main.go [directory]")
+		fmt.Println("  Compare with JSON:    go run main.go -compare=old.json [files...]")
+		fmt.Println("  Save to JSON:         go run main.go -save=tree.json [files...]")
+		fmt.Println("  Load from JSON:       go run main.go -load=tree.json")
+		fmt.Println("")
+		fmt.Println("Flags:")
+		flag.PrintDefaults()
+		return
+	}
+
+	args := flag.Args()
+
+	// Handle load JSON case
+	if *loadJSON != "" {
+		tree, err := LoadMerkleTreeFromFile(*loadJSON)
+		if err != nil {
+			fmt.Printf("Error loading JSON: %v\n", err)
+			return
+		}
+
+		fmt.Println("=== Loaded Merkle Tree ===")
+		tree.Print()
+		fmt.Printf("File Count: %d\n", tree.FileCount)
+		fmt.Printf("Created At: %s\n", tree.CreatedAt.Format(time.RFC3339))
+		return
+	}
+
+	// Build new tree from files
 	var data [][]byte
 	var err error
+
 	if len(args) > 1 {
-		data, err = hashDirectFilePaths(args) // get the direct filepaths of the files
+		data, err = hashDirectFilePaths(args)
 		if err != nil {
-			fmt.Println("Error getting direct filepaths:", err)
+			fmt.Printf("Error getting direct filepaths: %v\n", err)
 			return
 		}
-
 	} else if len(args) == 1 {
-		// if there is one arg, treat it as directory and hash all files in the directory
 		data, err = hashFilesInDirectory(args[0])
 		if err != nil {
-			fmt.Println("Error hashing files:", err)
+			fmt.Printf("Error hashing files: %v\n", err)
 			return
 		}
-
 	} else {
 		fmt.Println("No files provided")
 		return
 	}
 
 	tree := buildMerkleTree(data)
-
 	if tree == nil {
 		fmt.Println("Could not build Merkle Tree")
 		return
 	}
 
-	fmt.Println("Merkle Tree Root Hash:", hex.EncodeToString(tree.Root.Hash))
+	fmt.Println("=== New Merkle Tree ===")
+	tree.Print()
+	fmt.Printf("File Count: %d\n", tree.FileCount)
+	fmt.Printf("Created At: %s\n", tree.CreatedAt.Format(time.RFC3339))
 
+	// Save to JSON if requested
+	if *saveJSON != "" {
+		err := tree.SaveToFile(*saveJSON)
+		if err != nil {
+			fmt.Printf("Error saving JSON: %v\n", err)
+		} else {
+			fmt.Printf("✅ Saved tree to %s\n", *saveJSON)
+		}
+	}
+
+	// Compare with existing JSON if requested
+	if *compareJSON != "" {
+		fmt.Println()
+		oldTree, err := LoadMerkleTreeFromFile(*compareJSON)
+		if err != nil {
+			fmt.Printf("Error loading comparison JSON: %v\n", err)
+			return
+		}
+
+		tree.Compare(oldTree)
+
+		// Show detailed comparison
+		if !tree.isEqual(oldTree) {
+			fmt.Println("\n=== Detailed Analysis ===")
+			if tree.FileCount != oldTree.FileCount {
+				fmt.Printf("📊 File count changed: %d → %d\n", oldTree.FileCount, tree.FileCount)
+			}
+
+		}
+	}
 }

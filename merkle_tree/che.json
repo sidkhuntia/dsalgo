@@ -1,0 +1,98 @@
+{
+  "root": {
+    "left": {
+      "left": {
+        "left": {
+          "left": {
+            "hash": "iyZeQ5spqLjic+AojP1eR8Db1WuEHmXTr1/FhMhT4uY="
+          },
+          "right": {
+            "hash": "iyZeQ5spqLjic+AojP1eR8Db1WuEHmXTr1/FhMhT4uY="
+          },
+          "hash": "43W0donQz9l3lofwaQsmi01wSokuqVU7sd+lWayrL8c="
+        },
+        "right": {
+          "left": {
+            "hash": "n9dflJ69nBsl3f4J61O9UFPPAJySXHbTztxBdMot0Es="
+          },
+          "right": {
+            "hash": "yHEqwmSSrbU70Btepn4BtAvBVRQID9UhpZCrnI7GbBk="
+          },
+          "hash": "sJ0R+0B4JckWwRSqQmyZs0ZQMPK6U8K2WEMwWjlMH3Q="
+        },
+        "hash": "iMCFs9Dn7ggDNUFB7pHyvo8bsl9euvZhcf39nAXmzss="
+      },
+      "right": {
+        "left": {
+          "left": {
+            "hash": "vM13bjI0VvN1IGIYBuM8y3HG1tGMVdJCKLI+gnQqfxI="
+          },
+          "right": {
+            "hash": "iG40Gz+0cVSM3cWJtI8hR4xksj42/sMWTNDiS/7dkRE="
+          },
+          "hash": "M4U3HFmAAIBU5I7K/8tg2m13l2QP9gPfZKYu3q4spb0="
+        },
+        "right": {
+          "left": {
+            "hash": "21nsqk7jOxWCXpGWmEBGXAwTy1nwZQURcac1A04XvqE="
+          },
+          "right": {
+            "hash": "e3bsISVSh7vHlMWHBpthkG1z63vMew7ubXE0ExWycHQ="
+          },
+          "hash": "qvCFF+KNbY6kS1ZiutQcxmHfMjTw1aDHSY05OhlGIHI="
+        },
+        "hash": "3zAhGSmIqhOkioTAT5ySjaGOH8ayfmjStl7paZqEPrE="
+      },
+      "hash": "JjyqlajmDKNLfsVb0zV4UDHhTbBFzCZnrt91BL+5fkQ="
+    },
+    "right": {
+      "left": {
+        "left": {
+          "left": {
+            "hash": "yFD3NubAlmlU7LhcObAvvTbUVbyzGE9qI48Dn5mEeG0="
+          },
+          "right": {
+            "hash": "fr+aptDC5V7Uiwbe6mrI+ipgBlmAHTzvzJRAXcVSVa4="
+          },
+          "hash": "t+FaNEaAFQHZHto346+q8YCx4WvjaYHD+LHpfDse1KQ="
+        },
+        "right": {
+          "left": {
+            "hash": "Q1RuCEr8HFxsJMyCQ6vq9ReV/2l/sONk725tQD2uJjg="
+          },
+          "right": {
+            "hash": "YchYzoPD48eyOoGGZxPIsnCKRNcy2q3enGl3/iFHx3Y="
+          },
+          "hash": "VezI/lvLWXpqfb8B+83ohKDH8cP2HQgM1OVV/JYTB0Y="
+        },
+        "hash": "pBFJMv+FBef/Mw246iU0BHqskIuHy1YmCw18s1GCoQo="
+      },
+      "right": {
+        "left": {
+          "left": {
+            "hash": "/Oynpr/dnQkJYjh6kjWOy8Ajv+QrezKJ0NnkgBhGCaA="
+          },
+          "right": {
+            "hash": "ifabIfNvKDGVHDKLBqWXT5SF1U5PNQAGqEMsXDZXsh4="
+          },
+          "hash": "pPCZZqR8A6O9zl6xulI3mv/zkpcaOIKwfLe/wjcHqKE="
+        },
+        "right": {
+          "left": {
+            "hash": "41BG5SiWEOw+TzZK/ZZjvSl2ZSOHF8B0Qr7iVUxEvfY="
+          },
+          "right": {
+            "hash": "7ncT8yNcVx2xwmhMWOYxv/MD3Rs54/j2CKgCjWqn5G8="
+          },
+          "hash": "TPPt/yMYips2h6XcVUzEre2G1Gbn8EW1QG8Itwr/MRQ="
+        },
+        "hash": "Kp1s2+Fy5uAFVypCODyH36MNMx9ovvrfwW1EsKEyqg8="
+      },
+      "hash": "XFtjq8eqFcoXHQZiLYuNRC3qq1l4IfwVRX3K1P87yJs="
+    },
+    "hash": "yfk/b9GS6F19shgKBDn986zSwPa/+86MFBnpa7wFndo="
+  },
+  "created_at": "2025-06-18T17:43:55.32824+05:30",
+  "file_count": 15,
+  "root_hash": "c9f93f6fd192e85d7db2180a0439fdf3acd2c0f6bffbce8c1419e96bbc059dda"
+}
