@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 )
@@ -61,10 +63,88 @@ func buildMerkleTree(data [][]byte) *MerkleTree {
 		nodes = newNodes
 	}
 
+	if len(nodes) == 0 {
+		return nil
+	}
+
 	return &MerkleTree{Root: nodes[0]}
 }
 
+func getAllFilesInDirectory(directory string) ([]string, error) {
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, err
+	}
+
+	filenames := make([]string, 0, len(files))
+
+	for _, file := range files {
+		fullPath := filepath.Join(directory, file.Name())
+		fullPath = filepath.Clean(fullPath)
+		fullPath, err = filepath.Abs(fullPath)
+		if err != nil {
+			return nil, err
+		}
+
+		if file.IsDir() {
+			subFiles, err := getAllFilesInDirectory(fullPath)
+			if err != nil {
+				return nil, err
+			}
+			filenames = append(filenames, subFiles...)
+		} else {
+			filenames = append(filenames, fullPath)
+		}
+	}
+
+	return filenames, nil
+}
+
+func hashFilesInDirectory(directory string) ([][]byte, error) {
+
+	filenames, err := getAllFilesInDirectory(directory)
+	if err != nil {
+		return nil, err
+	}
+
+	return hashFiles(filenames)
+}
+
+func hashDirectFilePaths(filenames []string) ([][]byte, error) {
+
+	directFilePaths := make([]string, 0, len(filenames))
+
+	for _, filename := range filenames {
+
+		fileInfo, err := os.Stat(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		if fileInfo.IsDir() {
+			return nil, fmt.Errorf("cannot hash directories along with filepaths")
+		}
+		absPath, err := filepath.Abs(filename)
+		if err != nil {
+			return nil, err
+		}
+		directFilePaths = append(directFilePaths, absPath)
+	}
+
+	return hashFiles(directFilePaths)
+}
+
 func hashFiles(files []string) ([][]byte, error) {
+
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no files provided")
+	}
+
+	// sort the files
+	sort.Strings(files)
+
+	fmt.Printf("Hashing %d files\n", len(files))
+
 	return hashFilesWithTimeout(files, 30*time.Second) // 30 second default timeout
 }
 
@@ -215,8 +295,16 @@ func main() {
 
 	var data [][]byte
 	var err error
-	if len(args) > 0 {
-		data, err = hashFiles(args)
+	if len(args) > 1 {
+		data, err = hashDirectFilePaths(args) // get the direct filepaths of the files
+		if err != nil {
+			fmt.Println("Error getting direct filepaths:", err)
+			return
+		}
+
+	} else if len(args) == 1 {
+		// if there is one arg, treat it as directory and hash all files in the directory
+		data, err = hashFilesInDirectory(args[0])
 		if err != nil {
 			fmt.Println("Error hashing files:", err)
 			return
@@ -228,6 +316,11 @@ func main() {
 	}
 
 	tree := buildMerkleTree(data)
+
+	if tree == nil {
+		fmt.Println("Could not build Merkle Tree")
+		return
+	}
 
 	fmt.Println("Merkle Tree Root Hash:", hex.EncodeToString(tree.Root.Hash))
 
