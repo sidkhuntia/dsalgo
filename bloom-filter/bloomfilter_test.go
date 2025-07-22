@@ -1,6 +1,7 @@
 package bloomfilter_test
 
 import (
+	"math"
 	"math/rand"
 	"slices"
 	"testing"
@@ -22,17 +23,19 @@ func randomWord(length int) string {
 }
 
 func TestNewBloomFilter(t *testing.T) {
-	size := 1000
-	hashCount := 3
-	bf := bloomfilter.NewBloomFilter(size, hashCount)
+	p := 0.01
+	n := 1000000
+	bf := bloomfilter.NewBloomFilter(p, n)
 	assert.NotNil(t, bf)
-	assert.Equal(t, size, bf.Size())
-	assert.Equal(t, hashCount, bf.HashCount())
-	assert.Len(t, bf.BitSet(), size)
+	assert.Equal(t, int(math.Ceil(-float64(n)*math.Log(p)/(math.Log(2)*math.Log(2)))), bf.Size())
+	assert.Equal(t, int64(math.Ceil(float64(bf.Size())/float64(n)*math.Log(2))), bf.HashCount())
+	assert.Len(t, bf.BitSet(), int(math.Ceil(-float64(n)*math.Log(p)/(math.Log(2)*math.Log(2)))))
 }
 
 func TestAddAndContains(t *testing.T) {
-	bf := bloomfilter.NewBloomFilter(1000000, 100)
+	p := 0.01
+	n := 1000000
+	bf := bloomfilter.NewBloomFilter(p, n)
 
 	// Add random words
 	addedWords := make([]string, 10000)
@@ -49,7 +52,7 @@ func TestAddAndContains(t *testing.T) {
 
 	// Check non-added words (may have false positives, but for testing we can check a few)
 	falsePositives := 0
-	testWordsCount := 1000000
+	testWordsCount := (math.MaxInt64)
 	for range testWordsCount {
 		word := randomWord(rand.Intn(10) + 1)
 		if bf.Contains(word) && !slices.Contains(addedWords, word) {
@@ -60,7 +63,9 @@ func TestAddAndContains(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	bf := bloomfilter.NewBloomFilter(1000, 3)
+	p := 0.01
+	n := 1000000
+	bf := bloomfilter.NewBloomFilter(p, n)
 	bf.Add("test")
 	assert.True(t, bf.Contains("test"))
 	bf.Clear()
