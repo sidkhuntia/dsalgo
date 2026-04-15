@@ -2,158 +2,212 @@ package minheap
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestLen_EmptyHeap(t *testing.T) {
-	mh := &MinHeap{}
-	if mh.Len() != 0 {
-		t.Errorf("expected Len 0 on empty heap, got %d", mh.Len())
-	}
+// ---------------------------------------------------------------------------
+// MinHeap[int]
+// ---------------------------------------------------------------------------
+
+func TestInt_Len_EmptyHeap(t *testing.T) {
+	mh := &MinHeap[int]{}
+	assert.Equal(t, 0, mh.Len())
 }
 
-func TestInsert_SingleElement(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_Insert_SingleElement(t *testing.T) {
+	mh := &MinHeap[int]{}
 	mh.Insert(42)
-	if mh.Len() != 1 {
-		t.Errorf("expected Len 1 after one insert, got %d", mh.Len())
-	}
+	assert.Equal(t, 1, mh.Len())
 }
 
-func TestInsert_MultipleElements_Len(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_Insert_MultipleElements_Len(t *testing.T) {
+	mh := &MinHeap[int]{}
 	values := []int{5, 3, 8, 1, 9, 2}
 	for i, v := range values {
 		mh.Insert(v)
-		if mh.Len() != i+1 {
-			t.Errorf("expected Len %d after %d inserts, got %d", i+1, i+1, mh.Len())
-		}
+		assert.Equal(t, i+1, mh.Len())
 	}
 }
 
-func TestExtractMin_SingleElement(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_ExtractMin_SingleElement(t *testing.T) {
+	mh := &MinHeap[int]{}
 	mh.Insert(7)
-	min := mh.ExtractMin()
-	if min != 7 {
-		t.Errorf("expected ExtractMin to return 7, got %d", min)
-	}
-	if mh.Len() != 0 {
-		t.Errorf("expected Len 0 after extracting only element, got %d", mh.Len())
-	}
+	assert.Equal(t, 7, mh.ExtractMin())
+	assert.Equal(t, 0, mh.Len())
 }
 
-func TestExtractMin_ReturnsMinimum(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_ExtractMin_ReturnsMinimum(t *testing.T) {
+	mh := &MinHeap[int]{}
 	for _, v := range []int{10, 3, 7, 1, 5} {
 		mh.Insert(v)
 	}
-	min := mh.ExtractMin()
-	if min != 1 {
-		t.Errorf("expected ExtractMin to return 1, got %d", min)
-	}
+	assert.Equal(t, 1, mh.ExtractMin())
 }
 
-func TestExtractMin_ReducesLen(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_ExtractMin_ReducesLen(t *testing.T) {
+	mh := &MinHeap[int]{}
 	for _, v := range []int{4, 2, 6} {
 		mh.Insert(v)
 	}
 	mh.ExtractMin()
-	if mh.Len() != 2 {
-		t.Errorf("expected Len 2 after one ExtractMin, got %d", mh.Len())
-	}
+	assert.Equal(t, 2, mh.Len())
 }
 
-// Extracting all elements should yield values in ascending (sorted) order.
-func TestExtractMin_YieldsSortedOrder(t *testing.T) {
-	mh := &MinHeap{}
-	input := []int{9, 3, 7, 1, 5, 2, 8, 4, 6}
-	for _, v := range input {
+// Repeated ExtractMin calls must yield values in ascending order.
+func TestInt_ExtractMin_YieldsSortedOrder(t *testing.T) {
+	mh := &MinHeap[int]{}
+	for _, v := range []int{9, 3, 7, 1, 5, 2, 8, 4, 6} {
 		mh.Insert(v)
 	}
-
 	prev := mh.ExtractMin()
 	for mh.Len() > 0 {
 		curr := mh.ExtractMin()
-		if curr < prev {
-			t.Errorf("heap order violated: extracted %d after %d", curr, prev)
-		}
+		assert.LessOrEqual(t, prev, curr, "heap order violated")
 		prev = curr
 	}
 }
 
-// Insert in strictly descending order — every insert triggers a full bubble-up.
-func TestInsert_DescendingOrder_HeapProperty(t *testing.T) {
-	mh := &MinHeap{}
+// Every insert triggers a full bubble-up when values arrive in descending order.
+func TestInt_Insert_DescendingOrder(t *testing.T) {
+	mh := &MinHeap[int]{}
 	for _, v := range []int{10, 8, 6, 4, 2} {
 		mh.Insert(v)
 	}
-	min := mh.ExtractMin()
-	if min != 2 {
-		t.Errorf("expected minimum 2 after descending inserts, got %d", min)
-	}
+	assert.Equal(t, 2, mh.ExtractMin())
 }
 
-// Insert in strictly ascending order — no bubble-up needed.
-func TestInsert_AscendingOrder_HeapProperty(t *testing.T) {
-	mh := &MinHeap{}
+// No bubble-up needed when values arrive in ascending order.
+func TestInt_Insert_AscendingOrder(t *testing.T) {
+	mh := &MinHeap[int]{}
 	for _, v := range []int{1, 3, 5, 7, 9} {
 		mh.Insert(v)
 	}
-	min := mh.ExtractMin()
-	if min != 1 {
-		t.Errorf("expected minimum 1 after ascending inserts, got %d", min)
-	}
+	assert.Equal(t, 1, mh.ExtractMin())
 }
 
-func TestExtractMin_WithDuplicates(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_ExtractMin_WithDuplicates(t *testing.T) {
+	mh := &MinHeap[int]{}
 	for _, v := range []int{4, 4, 4, 1, 1} {
 		mh.Insert(v)
 	}
-
 	expected := []int{1, 1, 4, 4, 4}
 	for _, want := range expected {
-		got := mh.ExtractMin()
-		if got != want {
-			t.Errorf("expected %d, got %d", want, got)
-		}
+		assert.Equal(t, want, mh.ExtractMin())
 	}
 }
 
-func TestExtractMin_NegativeNumbers(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_ExtractMin_NegativeNumbers(t *testing.T) {
+	mh := &MinHeap[int]{}
 	for _, v := range []int{0, -5, 3, -1, -10, 7} {
 		mh.Insert(v)
 	}
-	min := mh.ExtractMin()
-	if min != -10 {
-		t.Errorf("expected minimum -10, got %d", min)
-	}
+	assert.Equal(t, -10, mh.ExtractMin())
 }
 
-func TestHeap_RepeatedInsertAndExtract(t *testing.T) {
-	mh := &MinHeap{}
+func TestInt_RepeatedInsertAndExtract(t *testing.T) {
+	mh := &MinHeap[int]{}
 
 	mh.Insert(5)
 	mh.Insert(2)
-	if got := mh.ExtractMin(); got != 2 {
-		t.Errorf("expected 2, got %d", got)
-	}
+	assert.Equal(t, 2, mh.ExtractMin())
 
 	mh.Insert(1)
 	mh.Insert(8)
-	if got := mh.ExtractMin(); got != 1 {
-		t.Errorf("expected 1, got %d", got)
-	}
+	assert.Equal(t, 1, mh.ExtractMin())
+	assert.Equal(t, 5, mh.ExtractMin())
+	assert.Equal(t, 8, mh.ExtractMin())
+	assert.Equal(t, 0, mh.Len())
+}
 
-	if got := mh.ExtractMin(); got != 5 {
-		t.Errorf("expected 5, got %d", got)
+// ---------------------------------------------------------------------------
+// MinHeap[float64]
+// ---------------------------------------------------------------------------
+
+func TestFloat64_ExtractMin_ReturnsMinimum(t *testing.T) {
+	mh := &MinHeap[float64]{}
+	for _, v := range []float64{3.14, 2.71, 1.41, 1.73} {
+		mh.Insert(v)
 	}
-	if got := mh.ExtractMin(); got != 8 {
-		t.Errorf("expected 8, got %d", got)
+	assert.InDelta(t, 1.41, mh.ExtractMin(), 1e-9)
+}
+
+func TestFloat64_ExtractMin_YieldsSortedOrder(t *testing.T) {
+	mh := &MinHeap[float64]{}
+	for _, v := range []float64{0.5, 3.3, 1.1, 2.2, 0.1} {
+		mh.Insert(v)
 	}
-	if mh.Len() != 0 {
-		t.Errorf("expected empty heap, got Len %d", mh.Len())
+	prev := mh.ExtractMin()
+	for mh.Len() > 0 {
+		curr := mh.ExtractMin()
+		assert.LessOrEqual(t, prev, curr, "heap order violated")
+		prev = curr
 	}
+}
+
+func TestFloat64_ExtractMin_WithNegativeAndZero(t *testing.T) {
+	mh := &MinHeap[float64]{}
+	for _, v := range []float64{0.0, -1.5, 2.5, -3.7} {
+		mh.Insert(v)
+	}
+	assert.InDelta(t, -3.7, mh.ExtractMin(), 1e-9)
+}
+
+func TestFloat64_ExtractMin_WithDuplicates(t *testing.T) {
+	mh := &MinHeap[float64]{}
+	for _, v := range []float64{1.1, 1.1, 0.5, 0.5} {
+		mh.Insert(v)
+	}
+	expected := []float64{0.5, 0.5, 1.1, 1.1}
+	for _, want := range expected {
+		assert.InDelta(t, want, mh.ExtractMin(), 1e-9)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// MinHeap[string]
+// ---------------------------------------------------------------------------
+
+func TestString_ExtractMin_ReturnsLexicographicMinimum(t *testing.T) {
+	mh := &MinHeap[string]{}
+	for _, v := range []string{"banana", "apple", "cherry", "date"} {
+		mh.Insert(v)
+	}
+	assert.Equal(t, "apple", mh.ExtractMin())
+}
+
+func TestString_ExtractMin_YieldsLexicographicOrder(t *testing.T) {
+	mh := &MinHeap[string]{}
+	for _, v := range []string{"zebra", "mango", "apple", "fig", "kiwi"} {
+		mh.Insert(v)
+	}
+	prev := mh.ExtractMin()
+	for mh.Len() > 0 {
+		curr := mh.ExtractMin()
+		assert.LessOrEqual(t, prev, curr, "heap order violated")
+		prev = curr
+	}
+}
+
+func TestString_ExtractMin_WithDuplicates(t *testing.T) {
+	mh := &MinHeap[string]{}
+	for _, v := range []string{"b", "a", "a", "c", "b"} {
+		mh.Insert(v)
+	}
+	expected := []string{"a", "a", "b", "b", "c"}
+	for _, want := range expected {
+		assert.Equal(t, want, mh.ExtractMin())
+	}
+}
+
+func TestString_Len_AfterInsertAndExtract(t *testing.T) {
+	mh := &MinHeap[string]{}
+	assert.Equal(t, 0, mh.Len())
+	mh.Insert("hello")
+	mh.Insert("world")
+	assert.Equal(t, 2, mh.Len())
+	mh.ExtractMin()
+	assert.Equal(t, 1, mh.Len())
+	mh.ExtractMin()
+	assert.Equal(t, 0, mh.Len())
 }
